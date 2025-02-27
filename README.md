@@ -1,6 +1,6 @@
 # Resume Tailoring Assistant
 
-An advanced NLP-powered tool that helps job seekers optimize their resumes for specific job descriptions using semantic matching, keyword extraction, and AI-driven content generation.
+An advanced NLP-powered tool that helps job seekers optimize their resumes for specific job descriptions using semantic matching, keyword extraction, and AI-driven text generation.
 
 ## 🌟 Features
 
@@ -31,7 +31,7 @@ An advanced NLP-powered tool that helps job seekers optimize their resumes for s
 
 ### Prerequisites
 - Python 3.8+
-- Required packages listed in `requirements.txt`
+- Required packages listed in `simple_requirements.txt`
 
 ### Installation
 
@@ -130,10 +130,6 @@ Matching algorithms:
 - `ExperienceMatcher`: Aligns experience with job requirements
 - `TransferableSkillDetector`: Identifies applicable transferable skills
 
-### `visualization.py`
-Reporting and visualization:
-- `MatchScoreVisualizer`: Creates visual representations of match scores
-- `ReportGenerator`: Produces detailed analysis reports
 
 ## 🛠️ Technology Stack
 
@@ -153,7 +149,7 @@ Reporting and visualization:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please check out our [contributing guidelines](CONTRIBUTING.md).
+Contributions are welcome!
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -163,7 +159,7 @@ Contributions are welcome! Please check out our [contributing guidelines](CONTRI
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgements
 
