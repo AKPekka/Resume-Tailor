@@ -1,8 +1,16 @@
-# Updated requirements for Python 3.13
+# Base requirements
 nltk==3.8.1
 PyPDF2==3.0.1
 python-docx==0.8.11
 streamlit==1.28.0
-numpy>=2.0.0,<2.3.0  # Ensure we get a stable, available version
-scikit-learn==1.4.2  # Updated version with Python 3.13 support
+numpy>=2.0.0,<2.3.0
+scikit-learn==1.4.2
 certifi==2024.2.2
+
+# AI model requirements
+sentence-transformers==2.3.1
+transformers==4.38.0
+torch==2.2.0
+
+# Optional: For GPU support (uncomment if needed)
+# torch==2.2.0+cu118  # For CUDA 11.8
