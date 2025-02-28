@@ -45,90 +45,13 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r simple_requirements.txt
 
 # Download NLTK data
 python -m nltk.downloader punkt stopwords wordnet averaged_perceptron_tagger
 
 ```
 
-### Configuration
-
-Edit `config.yaml` to customize:
-- Model parameters
-- Industry-specific settings
-- Output preferences
-- API keys (if using cloud services)
-
-## 💻 Usage
-
-### Command Line Interface
-
-```bash
-# Basic usage
-python tailor.py --resume path/to/resume.pdf --job path/to/job_description.txt
-
-# With advanced options
-python tailor.py --resume path/to/resume.pdf --job path/to/job_description.txt --industry tech --output-format docx --enhancement-level comprehensive
-```
-
-### Python API
-
-```python
-from resume_tailor import ResumeTailoringAssistant
-
-# Initialize the assistant
-assistant = ResumeTailoringAssistant(
-    industry="technology",
-    enhancement_level="balanced"
-)
-
-# Process resume and job description
-results = assistant.process(
-    resume_path="path/to/resume.pdf",
-    job_description_path="path/to/job_description.txt"
-)
-
-# Get optimization suggestions
-suggestions = results.get_suggestions()
-
-# Generate optimized resume
-optimized_resume = results.generate_optimized_resume()
-optimized_resume.save("optimized_resume.docx")
-```
-
-### Web Interface
-
-Run the web server:
-```bash
-python app.py
-```
-Then access the web interface at `http://localhost:5000`
-
-## 🔧 Core Modules
-
-### `document_parser.py`
-Handles parsing of different document formats:
-- `ResumeParser`: Extracts structured data from resumes
-- `JobDescriptionParser`: Processes job descriptions into analyzable components
-
-### `nlp_engine.py`
-Core NLP functionality:
-- `KeywordExtractor`: Identifies important keywords and phrases
-- `SemanticAnalyzer`: Performs semantic similarity calculations
-- `EntityRecognizer`: Custom NER for resume and job description entities
-
-### `optimization_engine.py`
-AI-driven content optimization:
-- `ContentGenerator`: GPT-2 based text generation
-- `PhraseEnhancer`: Improves existing content
-- `BulletPointGenerator`: Creates achievement-focused bullet points
-
-### `semantic_matcher.py`
-Matching algorithms:
-- `SkillMatcher`: Matches skills between resume and job description
-- `ExperienceMatcher`: Aligns experience with job requirements
-- `TransferableSkillDetector`: Identifies applicable transferable skills
 
 
 ## 🛠️ Technology Stack
@@ -143,7 +66,6 @@ Matching algorithms:
 ### Data Processing
 - **PyPDF2**: PDF processing
 - **python-docx**: Word document handling
-- **pandas**: Data manipulation and analysis
 - **NumPy**: Numerical operations
 
 
@@ -157,9 +79,6 @@ Contributions are welcome!
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgements
 
@@ -167,4 +86,4 @@ This project is licensed under the MIT License.
 - [Sentence-BERT](https://www.sbert.net/)
 - [Hugging Face](https://huggingface.co/)
 - [OpenAI](https://openai.com/) for GPT-2
-- All contributors and beta testers
+- All contributors
