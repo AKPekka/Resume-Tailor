@@ -90,9 +90,21 @@ class ResumeTailor:
     def _is_skill(self, keyword):
         """Determine if a keyword is likely a skill"""
         common_skills = [
-            "python", "java", "javascript", "html", "css", "sql", "nosql",
-            "leadership", "communication", "project management", "analysis",
-            "design", "development", "testing", "agile", "scrum", "data"
+            # Technical Skills
+            "python", "java", "javascript", "c++", "c#", "php", "ruby", "swift", "kotlin", "golang", "rust", "scala",
+            "html", "css", "sql", "nosql", "mongodb", "postgresql", "mysql", "oracle", "database",
+            "react", "angular", "vue", "node.js", "django", "flask", "spring", "asp.net", ".net", "jquery",
+            "aws", "azure", "gcp", "cloud", "docker", "kubernetes", "terraform", "ansible", "ci/cd", "jenkins", "git",
+            "linux", "unix", "windows", "macos", "bash", "powershell",
+            "machine learning", "deep learning", "artificial intelligence", "ai", "nlp", "data science", "data analysis",
+            "statistics", "big data", "spark", "hadoop", "kafka", "tableau", "power bi", "excel", "api", "rest", "graphql",
+            "microservices", "serverless", "cybersecurity", "networking", "penetration testing", "encryption",
+            # Soft Skills & Business Skills
+            "leadership", "communication", "project management", "product management", "agile", "scrum", "kanban",
+            "problem solving", "critical thinking", "analytical skills", "research", "design", "ux/ui", "user experience",
+            "user interface", "prototyping", "wireframing", "testing", "qa", "automation", "devops",
+            "strategy", "marketing", "sales", "business development", "customer service", "operations", "finance",
+            "budgeting", "forecasting", "negotiation", "presentation", "collaboration", "teamwork", "mentoring"
         ]
 
         for skill in common_skills:
@@ -104,8 +116,11 @@ class ResumeTailor:
     def _is_education_related(self, keyword):
         """Determine if a keyword is related to education"""
         education_terms = [
-            "degree", "bachelor", "master", "phd", "certificate", "certification",
-            "course", "training", "university", "college", "school", "education"
+            "degree", "bachelor", "b.s.", "b.a.", "master", "m.s.", "m.a.", "mba", "phd", "doctorate",
+            "associate", "diploma", "certificate", "certification", "licensed", "cpa", "pmp", "cfa",
+            "course", "training", "program", "studies", "research", "thesis", "dissertation",
+            "university", "college", "school", "institute", "academy", "education", "graduate", "undergraduate",
+            "major", "minor", "gpa"
         ]
 
         for term in education_terms:

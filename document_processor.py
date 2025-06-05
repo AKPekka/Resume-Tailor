@@ -1,4 +1,4 @@
-import PyPDF2
+import pdfplumber
 import docx
 import re
 import nltk
@@ -17,12 +17,21 @@ class DocumentProcessor:
 
         self.stop_words = set(stopwords.words('english'))
 
-    def extract_text_from_pdf(self, pdf_file):
-        """Extract text from PDF file"""
+    def extract_text_from_pdf(self, pdf_file_path):
+        """Extract text from PDF file using pdfplumber"""
         text = ""
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+        try:
+            with pdfplumber.open(pdf_file_path) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text: # Ensure text was extracted
+                        text += page_text + "\n" # Add newline between pages
+        except Exception as e:
+            # Handle potential errors like encrypted PDFs or corrupted files
+            print(f"Error reading PDF {pdf_file_path}: {e}")
+            # Optionally, re-raise or return a specific error message / empty string
+            # For now, return empty string if an error occurs
+            return ""
         return text
 
     def extract_text_from_docx(self, docx_file):

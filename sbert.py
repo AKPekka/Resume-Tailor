@@ -24,7 +24,7 @@ class SemanticMatcher:
         # Cache for document embeddings to avoid recomputing
         self.embedding_cache = {}
 
-        # Common technical terms and skills that should be preserved during preprocessing
+        # Common technical terms that should be preserved during preprocessing
         self.technical_terms = set([
             "c++", "c#", ".net", "node.js", "react.js", "vue.js", "angular.js",
             "aws", "azure", "gcp", "api", "rest", "graphql", "sql", "nosql",
@@ -33,30 +33,6 @@ class SemanticMatcher:
             "kanban", "jira", "confluence", "aws/azure", "java/python", "html/css",
             "tensorflow", "pytorch", "pandas", "numpy", "scikit-learn", "keras",
             "nlp", "ml", "ai", "ux/ui", "a/b", "seo/sem", "ios/android"
-        ])
-
-        # Common resume skills - helps with better skill extraction
-        self.common_skills = set([
-            "python", "java", "javascript", "typescript", "ruby", "php", "golang", "scala",
-            "swift", "kotlin", "rust", "html", "css", "sql", "nosql", "react", "angular",
-            "vue", "node", "django", "flask", "spring", "express", "tensorflow", "pytorch",
-            "machine learning", "data science", "data analysis", "statistics", "algorithm",
-            "optimization", "cloud computing", "aws", "azure", "gcp", "devops", "ci/cd",
-            "docker", "kubernetes", "jenkins", "git", "agile", "scrum", "project management",
-            "product management", "leadership", "communication", "presentation", "teamwork",
-            "problem solving", "critical thinking", "creativity", "time management",
-            "customer service", "sales", "marketing", "seo", "content creation", "editing",
-            "copywriting", "public speaking", "negotiation", "conflict resolution",
-            "financial analysis", "budgeting", "forecasting", "accounting", "auditing",
-            "compliance", "risk management", "regulatory", "legal", "research", "analytics",
-            "business intelligence", "data visualization", "tableau", "power bi", "excel",
-            "microsoft office", "linux", "windows", "macos", "networking", "security",
-            "cryptography", "blockchain", "mobile development", "ios", "android", "react native",
-            "flutter", "ui/ux design", "graphic design", "wireframing", "prototyping",
-            "user research", "testing", "qa", "automation", "manual testing", "performance testing",
-            "database design", "data modeling", "etl", "data warehousing", "big data", "hadoop",
-            "spark", "kafka", "api development", "microservices", "serverless", "rest api",
-            "graphql", "oauth", "authentication", "authorization", "identity management"
         ])
 
     def _preprocess_text(self, text: str) -> str:
@@ -159,112 +135,33 @@ class SemanticMatcher:
         similarity = util.pytorch_cos_sim(resume_embedding, job_embedding).item()
         return similarity
 
-    def extract_key_skills(self, text: str, top_n: int = 25) -> List[str]:
-        """Extract key skills or phrases from text using SBERT and improved methods."""
-        # Preprocess text
-        clean_text = self._preprocess_text(text)
-
-        # First attempt: Try to identify skills from predefined common skills
-        identified_skills = []
-        for skill in self.common_skills:
-            if skill in clean_text:
-                identified_skills.append(skill)
-
-        # Look for technical terms
-        for term in self.technical_terms:
-            if term in clean_text and term not in identified_skills:
-                identified_skills.append(term)
-
-        # If we found enough skills from predefined lists, use those
-        if len(identified_skills) >= top_n * 0.7:  # If we found at least 70% of desired skills
-            return identified_skills[:top_n]
-
-        # Otherwise, use more sophisticated extraction with SBERT
-
-        # Extract candidate keyphrases using n-grams
-        words = clean_text.split()
-        unigrams = words
-        bigrams = [' '.join(words[i:i+2]) for i in range(len(words)-1)]
-        trigrams = [' '.join(words[i:i+3]) for i in range(len(words)-2)]
-
-        # Combine all candidates
-        candidates = unigrams + bigrams + trigrams
-
-        # Remove duplicates and very short candidates
-        candidates = list(set([c for c in candidates if len(c) > 3]))
-
-        # Prioritize candidates that might be skills
-        prioritized_candidates = []
-        other_candidates = []
-
-        for c in candidates:
-            if any(skill in c for skill in self.common_skills) or any(term in c for term in self.technical_terms):
-                prioritized_candidates.append(c)
-            else:
-                other_candidates.append(c)
-
-        # Combine, with prioritized candidates first
-        candidates = prioritized_candidates + other_candidates
-
-        # Limit to a manageable number
-        candidates = candidates[:500]  # Practical limit
-
-        if not candidates:
-            return []
-
-        # Get embeddings for all candidates
-        candidate_embeddings = self.model.encode(candidates, convert_to_tensor=True)
-
-        # Use clustering to find diverse key skills
-        from sklearn.cluster import KMeans
-
-        # Determine number of clusters (smaller of top_n or candidates length)
-        n_clusters = min(top_n, len(candidates))
-
-        # Convert embeddings to numpy for KMeans
-        embeddings_np = candidate_embeddings.cpu().numpy()
-
-        # Perform KMeans clustering
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42).fit(embeddings_np)
-
-        # Get closest candidates to centroids
-        closest_indices = []
-
-        for i in range(n_clusters):
-            # Find candidates in this cluster
-            cluster_indices = np.where(kmeans.labels_ == i)[0]
-            if len(cluster_indices) == 0:
-                continue
-
-            # Calculate distances to centroid
-            distances = np.linalg.norm(
-                embeddings_np[cluster_indices] - kmeans.cluster_centers_[i].reshape(1, -1),
-                axis=1
-            )
-
-            # Get the index of the closest candidate
-            closest_idx = cluster_indices[np.argmin(distances)]
-            closest_indices.append(closest_idx)
-
-        # Return the key skills
-        result_skills = [candidates[idx] for idx in closest_indices]
-
-        # Combine with identified skills and remove duplicates
-        all_skills = list(set(identified_skills + result_skills))
-        return all_skills[:top_n]
-
     def find_missing_skills(self, resume_text: str, job_text: str,
+                           job_keywords: List[str],
                            similarity_threshold: float = 0.75) -> Dict[str, Any]:
-        """Identify skills from job description missing in resume using semantic matching."""
-        # Extract key skills with improved method
-        job_skills = self.extract_key_skills(job_text)
-
+        """Identify skills from provided job_keywords missing in resume using semantic matching."""
         # Segment the resume with improved method
         resume_segments = self._segment_document(resume_text)
+        if not resume_segments: # Handle empty resume or segmentation failure
+            resume_segments = [self._preprocess_text(resume_text)] if resume_text.strip() else [""]
 
         # Get embeddings
-        job_skill_embeddings = self.model.encode(job_skills, convert_to_tensor=True)
-        resume_segment_embeddings = self.model.encode(resume_segments, convert_to_tensor=True)
+        if not job_keywords: # No keywords to search for
+             # Calculate overall similarity and return early
+            overall_similarity = self.calculate_similarity(resume_text, job_text)
+            return {
+                'missing_skills': [],
+                'weak_skills': [],
+                'present_skills': [],
+                'similarity_score': overall_similarity
+            }
+
+        job_skill_embeddings = self.model.encode(job_keywords, convert_to_tensor=True)
+        
+        # Ensure resume_segments are not empty before encoding
+        if not any(s.strip() for s in resume_segments):
+            resume_segment_embeddings = self.model.encode([""], convert_to_tensor=True) # Avoid error with empty list
+        else:
+            resume_segment_embeddings = self.model.encode(resume_segments, convert_to_tensor=True)
 
         # For each job skill, find the best matching resume segment
         missing_skills = []
@@ -281,7 +178,7 @@ class SemanticMatcher:
         elif len(resume_text) > 5000:  # Very detailed resume
             similarity_threshold = min(0.85, similarity_threshold + 0.05)
 
-        for i, skill in enumerate(job_skills):
+        for i, skill in enumerate(job_keywords):
             # Calculate similarity with each resume segment
             skill_embedding = job_skill_embeddings[i].reshape(1, -1)
             similarities = util.pytorch_cos_sim(skill_embedding, resume_segment_embeddings)

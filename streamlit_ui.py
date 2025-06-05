@@ -29,16 +29,18 @@ def main():
 
     # Model selection
     st.sidebar.header("Model Configuration")
-    sbert_model = st.sidebar.selectbox(
+    sbert_model_name = st.sidebar.selectbox(
         "Select SBERT Model",
         ["paraphrase-MiniLM-L6-v2", "all-mpnet-base-v2"],
-        help="Smaller models are faster, larger models are more accurate"
+        index=1, # Default to the better SBERT model
+        help="'all-mpnet-base-v2' is generally more accurate but slower."
     )
 
-    gpt2_model = st.sidebar.selectbox(
-        "Select GPT-2 Model",
-        ["gpt2", "gpt2-medium"],
-        help="Smaller models require less resources, larger models generate better suggestions"
+    generator_model_name = st.sidebar.selectbox(
+        "Select Bullet Generator Model",
+        ["gpt2-medium", "deepseek-ai/deepseek-coder-1.3b-instruct"],
+        index=1,  # Default to DeepSeek Coder
+        help="'deepseek-ai/deepseek-coder-1.3b-instruct' is a more advanced model for generation."
     )
 
     matching_threshold = st.sidebar.slider(
@@ -56,7 +58,7 @@ def main():
 
     # Initialize AI models with loading state indicators
     sbert_load_state = st.sidebar.text("SBERT: Not loaded")
-    gpt2_load_state = st.sidebar.text("GPT-2: Not loaded")
+    generator_load_state = st.sidebar.text("Generator: Not loaded") # Changed from gpt2_load_state
 
     # Create session state for storing data
     if 'tmp_resume_path' not in st.session_state:
@@ -75,8 +77,8 @@ def main():
         st.session_state.semantic_results = None
     if 'suggestions' not in st.session_state:
         st.session_state.suggestions = None
-    if 'gpt2_suggestions' not in st.session_state:
-        st.session_state.gpt2_suggestions = None
+    if 'gpt2_suggestions' not in st.session_state: # Will be 'generator_suggestions' effectively
+        st.session_state.gpt2_suggestions = None 
     if 'models_loaded' not in st.session_state:
         st.session_state.models_loaded = False
 
@@ -99,21 +101,27 @@ def main():
             with st.spinner("Loading AI models..."):
                 try:
                     # Initialize models
-                    sbert_load_state.text("SBERT: Loading...")
-                    st.session_state.semantic_matcher = SemanticMatcher(model_name=sbert_model)
-                    sbert_load_state.text("SBERT: ✅ Loaded")
+                    sbert_load_state.text(f"SBERT ({sbert_model_name}): Loading...")
+                    st.session_state.semantic_matcher = SemanticMatcher(model_name=sbert_model_name)
+                    sbert_load_state.text(f"SBERT ({sbert_model_name}): ✅ Loaded")
 
-                    gpt2_load_state.text("GPT-2: Loading...")
-                    st.session_state.bullet_generator = ResumeBulletGenerator(model_name=gpt2_model)
-                    gpt2_load_state.text("GPT-2: ✅ Loaded")
+                    generator_load_state.text(f"Generator ({generator_model_name}): Loading...")
+                    st.session_state.bullet_generator = ResumeBulletGenerator(
+                        keyword_extractor_instance=keyword_extractor, 
+                        model_name=generator_model_name
+                    )
+                    generator_load_state.text(f"Generator ({generator_model_name}): ✅ Loaded")
 
                     st.session_state.models_loaded = True
                 except Exception as e:
                     st.error(f"Error loading AI models: {str(e)}")
+                    st.exception(e) # Print full traceback to terminal
                     st.stop()
 
+        print("Starting document analysis...") # DEBUG
         with st.spinner("Analyzing documents with AI..."):
             # Process resume
+            print("Step 1: Processing resume file...") # DEBUG
             resume_type = 'pdf' if resume_file.name.endswith('.pdf') else 'docx'
             st.session_state.resume_type = resume_type
 
@@ -124,6 +132,7 @@ def main():
             st.session_state.tmp_resume_path = tmp_resume.name
 
             # Process job description
+            print("Step 2: Processing job description file...") # DEBUG
             job_type = 'pdf' if job_desc_file.name.endswith('.pdf') else 'docx'
             tmp_job = tempfile.NamedTemporaryFile(delete=False, suffix=f".{job_type}")
             tmp_job.write(job_desc_file.getvalue())
@@ -131,37 +140,57 @@ def main():
             st.session_state.tmp_job_path = tmp_job.name
 
             # Extract text
+            print("Step 3: Extracting text from resume...") # DEBUG
             resume_text = doc_processor.extract_text(st.session_state.tmp_resume_path, resume_type)
             st.session_state.resume_text = resume_text
+            print(f"Resume text extracted (length: {len(resume_text)} chars)") # DEBUG
 
+            print("Step 4: Extracting text from job description...") # DEBUG
             job_text = doc_processor.extract_text(st.session_state.tmp_job_path, job_type)
             st.session_state.job_text = job_text
+            print(f"Job text extracted (length: {len(job_text)} chars)") # DEBUG
 
             # 1. Simple keyword extraction (original functionality)
+            print("Step 5: Performing keyword extraction...") # DEBUG
             st.session_state.keyword_results = keyword_extractor.get_keyword_suggestions(
-                resume_text, job_text, similarity_threshold=matching_threshold
+                resume_text, job_text, similarity_threshold=matching_threshold 
             )
+            job_keywords_for_semantic = st.session_state.keyword_results.get('job_keywords', [])
+            print(f"Keyword extraction complete. Found {len(job_keywords_for_semantic)} job keywords.") # DEBUG
 
             # 2. Semantic matching using SBERT
+            print("Step 6: Performing semantic matching (SBERT)...") # DEBUG
             st.session_state.semantic_results = st.session_state.semantic_matcher.find_missing_skills(
-                resume_text, job_text, similarity_threshold=matching_threshold
+                resume_text=resume_text, 
+                job_text=job_text,
+                job_keywords=job_keywords_for_semantic,
+                similarity_threshold=matching_threshold 
             )
+            print("Semantic matching complete.") # DEBUG
+            if st.session_state.semantic_results:
+                 print(f"Missing skills found: {len(st.session_state.semantic_results.get('missing_skills',[]))}, Weak skills: {len(st.session_state.semantic_results.get('weak_skills',[]))}")
 
             # 3. Generate tailored suggestions using ResumeTailor
+            print("Step 7: Generating basic tailoring suggestions (ResumeTailor)...") # DEBUG
             st.session_state.suggestions = resume_tailor.generate_tailoring_suggestions(
                 st.session_state.keyword_results, resume_text
             )
+            print("Basic tailoring suggestions complete.") # DEBUG
 
-            # 4. Generate resume bullet points using GPT-2
+            # 4. Generate resume bullet points using the selected generator
+            print(f"Step 8: Generating bullet points with {generator_model_name}...") # DEBUG
             st.session_state.gpt2_suggestions = st.session_state.bullet_generator.generate_suggestions(
                 st.session_state.semantic_results, job_text, resume_text
             )
+            print("Bullet point generation complete.") # DEBUG
+        
+        print("Document analysis finished.") # DEBUG
 
         # Display results
         st.header("2. Analysis Results")
 
         # Create tabs for different analysis methods
-        tab1, tab2 = st.tabs(["Keyword Analysis", "Semantic Analysis (BERT)"])
+        tab1, tab2, tab3 = st.tabs(["Keyword Analysis", "Semantic Analysis (BERT)", "AI-Generated Bullet Points"])
 
         with tab1:
             # Display similarity score
@@ -232,40 +261,40 @@ def main():
                 else:
                     st.write("No weak skills detected!")
 
-        # Display tailoring suggestions
-        st.header("3. Tailoring Suggestions")
-
-        # Create tabs for different suggestion methods
-        tab1, tab2 = st.tabs(["Basic Suggestions", "AI-Generated Bullet Points (GPT-2)"])
-
-        with tab1:
-            for suggestion in st.session_state.suggestions:
-                if suggestion['keyword']:
-                    st.write(f"🔹 **{suggestion['suggestion']}** (Missing keyword: '{suggestion['keyword']}')")
+        with tab3:
+            st.subheader("Resume Bullet Point Suggestions (AI Generated)")
+            if st.session_state.gpt2_suggestions:
+                # Display suggestions for missing skills
+                if st.session_state.gpt2_suggestions.get('missing_skills'):
+                    st.markdown("#### For Missing Skills:")
+                    for item in st.session_state.gpt2_suggestions['missing_skills']:
+                        st.markdown(f"**Skill:** {item['skill']}")
+                        if item['bullet_points']:
+                            for bullet in item['bullet_points']:
+                                st.markdown(f"- {bullet}")
+                        else:
+                            st.markdown("_(No specific bullet points generated for this skill)_ ")
+                        st.markdown("---")
                 else:
-                    st.write(f"🔸 **{suggestion['suggestion']}**")
+                    st.markdown("_No missing skills found to generate bullet points for._")
 
-        with tab2:
-            # Display GPT-2 generated bullet points
-            st.subheader("Missing Skills - Add These to Your Resume")
-            for skill_suggestion in st.session_state.gpt2_suggestions['missing_skills']:
-                skill = skill_suggestion['skill']
-                st.markdown(f"#### {skill.title()}")
-
-                for i, bullet in enumerate(skill_suggestion['bullet_points']):
-                    st.markdown(f"• {bullet}")
-
-            st.subheader("Weak Skills - Replace with These Improved Versions")
-            for skill_suggestion in st.session_state.gpt2_suggestions['weak_skills']:
-                skill = skill_suggestion['skill']
-                st.markdown(f"#### {skill.title()}")
-
-                with st.expander("Current Content"):
-                    st.write(skill_suggestion['current_context'])
-
-                st.markdown("**Improved Bullet Points:**")
-                for bullet in skill_suggestion['improved_bullet_points']:
-                    st.markdown(f"• {bullet}")
+                # Display suggestions for weak skills
+                if st.session_state.gpt2_suggestions.get('weak_skills'):
+                    st.markdown("#### For Weak Skills (Improvements):")
+                    for item in st.session_state.gpt2_suggestions['weak_skills']:
+                        st.markdown(f"**Skill:** {item['skill']}")
+                        st.markdown(f"**Original Context Snippet:** {item.get('current_context', 'N/A')}")
+                        if item['improved_bullet_points']:
+                            st.markdown("**Suggested Improvements:**")
+                            for bullet in item['improved_bullet_points']:
+                                st.markdown(f"- {bullet}")
+                        else:
+                            st.markdown("_(No specific improvement suggestions generated for this skill)_ ")
+                        st.markdown("---")
+                else:
+                    st.markdown("_No weak skills found to generate improvements for._")
+            else:
+                st.info("Upload documents to see AI-generated bullet point suggestions.")
 
         # Create tailored resume
         st.header("4. Create Tailored Resume")
